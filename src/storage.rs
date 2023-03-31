@@ -1,4 +1,5 @@
 use core::any::Any;
+use core::ffi::CStr;
 use core::fmt::{self, Debug};
 
 #[cfg(feature = "use_serde")]
@@ -133,6 +134,23 @@ where
         T: DeserializeOwned,
     {
         (*self).deserialize(slice)
+    }
+}
+
+pub trait StorageIterate {
+    type Error: Debug;
+    type Entry: StorageEntry;
+    type Entries<'a>: Iterator<Item = Result<Self::Entry, Self::Error>>
+    where
+        Self: 'a;
+
+    fn entries(&self) -> Result<Self::Entries<'_>, Self::Error>;
+}
+
+pub trait StorageEntry {
+    fn name_cstr(&self) -> &CStr;
+    fn name(&self) -> Option<&str> {
+        self.name_cstr().to_str().ok()
     }
 }
 
@@ -277,6 +295,21 @@ where
         T: Serialize,
     {
         StorageImpl::set(self, name, value)
+    }
+}
+
+impl<const N: usize, R, S> StorageIterate for StorageImpl<N, R, S>
+where
+    S: SerDe,
+    R: StorageIterate,
+{
+    type Error = R::Error;
+    type Entry = R::Entry;
+    type Entries<'a> = R::Entries<'a>
+        where Self: 'a;
+
+    fn entries<'a>(&'a self) -> Result<Self::Entries<'a>, Self::Error> {
+        self.raw_storage.entries()
     }
 }
 
