@@ -298,6 +298,7 @@ where
     }
 }
 
+#[cfg(feature = "use_serde")]
 impl<const N: usize, R, S> StorageIterate for StorageImpl<N, R, S>
 where
     S: SerDe,
